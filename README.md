@@ -1,5 +1,5 @@
 # FriendGrpcSDK
-gRpc sdk for Unreal Engine. Maintained by Friend
+gRpc sdk for Unreal Engine. Maintained by Friend.
 ---
 
 ## Features
@@ -58,7 +58,7 @@ USTRUCT(BlueprintType)
 struct FRIENDGRPC_API FUserInfo {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     FString UserName;
 
     /**
