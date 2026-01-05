@@ -15,7 +15,7 @@ gRpc Tooling for Unreal Engine.
 ### 1. Clone the Repository
 Because this project uses submodules for gRPC, you must clone recursively:
 ```bash
-git clone --recursive [https://github.com/YourUsername/FriendGrpcSDK.git](https://github.com/YourUsername/FriendGrpcSDK.git)
+git clone --recursive https://github.com/RegularFriend/UnrealGrpcTooling.git
 ```
 
 ### 2. Build the tooling
