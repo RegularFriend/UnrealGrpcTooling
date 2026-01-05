@@ -1,8 +1,8 @@
-# FriendGrpcSDK
-gRpc sdk for Unreal Engine. Maintained by Friend.
+# Friend gRPC Tools
+gRpc Tooling for Unreal Engine. 
 ---
 
-## Features
+## Contents
 * **Unreal-Friendly gRPC Build**: Custom CMake configuration designed to build gRPC/Protobuf with the flags required for Unreal Engine compatibility
 * **Custom Protoc Plugin**: Includes `protoc-gen-unreal`, a specialized protoc generator that creates:
     * `USTRUCT` wrappers for Protobuf messages.
