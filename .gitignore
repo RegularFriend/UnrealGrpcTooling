@@ -1,0 +1,17 @@
+﻿.idea/
+cmake-build-*/
+out/
+build/
+.cache/
+**/cmake-build-*/
+**/.cache/
+*.exe
+*.o
+*.obj
+*.lib
+*.pdb
+*.ilk
+*.exp
+/outputs/
+.DS_Store
+Thumbs.db
