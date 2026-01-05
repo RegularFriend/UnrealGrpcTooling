@@ -19,11 +19,26 @@ git clone --recursive [https://github.com/YourUsername/FriendGrpcSDK.git](https:
 ```
 
 ### 2. Build the tooling
-Open the project by folder in CLion (or your ide of choice).
+Clion/Visual Studio Build
 1.  **Toolchain Setup**: Ensure your Toolchain is set to **Visual Studio** (required for Unreal Engine compatibility), and that you are making a release build (grpc debug builds have some incomptable flags)
 2.  **Initialize Submodule**: If the `grpc` folder is empty, run `git submodule update --init --recursive` in the terminal. If you cloned recursively, you can skip this step.
 3.  **Run Install**: Run the **Install** target (**Build > Install**).
 4.  **Verify Output**: Everything should be in the outputs folder. 
+
+Cli Build
+```bash
+# 1. Create a build directory
+mkdir build
+cd build
+
+# 2. Configure the project
+# Use -DCMAKE_BUILD_TYPE=Release because gRPC debug builds are often incompatible with Unreal
+cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release ..
+
+# 3. Build and Install
+# This compiles the plugin and copies binaries to the /outputs folder
+cmake --build . --target install --config Release
+```
 
 ## Usage in Unreal
 ### Generating Code
