@@ -1,5 +1,5 @@
 # FriendGrpcSDK
-Friend's gRpc sdk for using gRpc with the Unreal Engine
+gRpc sdk for Unreal Engine. Maintained by Friend
 ---
 
 ## Features
