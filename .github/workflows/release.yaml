@@ -1,0 +1,127 @@
+name: Build and Release SDK
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger a release when you push a tag
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache gRPC Build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: ${{ runner.os }}-grpc-${{ hashFiles('**/CMakeLists.txt', 'grpc/**') }}
+          restore-keys: |
+            ${{ runner.os }}-grpc-
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build and Install
+        run: cmake --build build --target install --config Release --parallel
+
+      - name: Prune Metadata
+        shell: pwsh
+        run: |
+          # these folders are unneeded for an unreal install
+          if (Test-Path "./outputs/windows/share") { Remove-Item -Recurse -Force "./outputs/windows/share" }
+          if (Test-Path "./outputs/windows/lib/cmake") { Remove-Item -Recurse -Force "./outputs/windows/lib/cmake" }
+          if (Test-Path "./outputs/windows/lib/pkgconfig") { Remove-Item -Recurse -Force "./outputs/windows/lib/pkgconfig" }
+
+      - name: Upload Host Tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: grpc-compiler-tools
+          path: |
+            outputs/windows/bin/protoc.exe
+            outputs/windows/bin/grpc_cpp_plugin.exe
+          if-no-files-found: error
+
+      - name: Zip Windows SDK
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ./outputs/windows/* -DestinationPath friend-grpc-sdk-win64.zip -Force
+
+      - name: Flatten Windows Binaries
+        shell: pwsh
+        run: |
+          if (Test-Path "./outputs/windows/bin/Release") {
+              Move-Item -Path "./outputs/windows/bin/Release/*" -Destination "./outputs/windows/bin/" -Force
+              Remove-Item -Path "./outputs/windows/bin/Release" -Recurse -Force
+          }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: friend-grpc-sdk-win64.zip
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#we combine these as we have to build linux to build android anyways.
+  build-linux-and-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+
+      - name: Build Linux SDK
+        run: |
+          cmake -B build-linux -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=./outputs/linux
+          cmake --build build-linux --target install --parallel 4
+
+      - name: Set Tool Permissions
+        run: chmod +x ./outputs/linux/bin/*
+
+      - name: Build Android SDK
+        run: |
+          cmake -B build-android \
+            -DCMAKE_SYSTEM_NAME=Android \
+            -DCMAKE_ANDROID_NDK=$ANDROID_NDK_HOME \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=./outputs/android \
+            -D_gRPC_CPP_PLUGIN=${{ github.workspace }}/outputs/linux/bin/grpc_cpp_plugin \
+            -D_gRPC_PROTOBUF_PROTOC_EXECUTABLE=${{ github.workspace }}/outputs/linux/bin/protoc
+          cmake --build build-android --target install -- -j 2
+
+      - name: Prune Linux and Android Metadata
+        run: |
+          # Cleanup unneeded headers/configs for Unreal
+          rm -rf ./outputs/linux/share ./outputs/linux/lib/cmake ./outputs/linux/lib/pkgconfig
+          rm -rf ./outputs/android/share ./outputs/android/lib/cmake ./outputs/android/lib/pkgconfig
+
+      - name: Zip SDKs
+        run: |
+          cd outputs/linux && zip -r ../../friend-grpc-sdk-linux.zip . && cd ../..
+          cd outputs/android && zip -r ../../friend-grpc-sdk-android.zip . && cd ../..
+
+      - name: Upload Linux and Android Releases
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            friend-grpc-sdk-linux.zip
+            friend-grpc-sdk-android.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
