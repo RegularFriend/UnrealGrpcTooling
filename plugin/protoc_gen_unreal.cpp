@@ -441,21 +441,21 @@ public:
             GenerateUstruct(msg, struct_printer, macro_with_space);
         }
 
-        // Converter Header Generation
-        const std::string converter_header = base_filename + "Converter.h";
-        const std::unique_ptr<io::ZeroCopyOutputStream> converter_header_stream(context->Open(converter_header));
-        io::Printer header_printer(converter_header_stream.get(), '$');
-        header_printer.Print({{"gc", kGeneratedComment}},
+        // Marshaller Header Generation
+        const std::string marshaller_header = base_filename + "Marshaller.h";
+        const std::unique_ptr<io::ZeroCopyOutputStream> marshaller_header_stream(context->Open(marshaller_header));
+        io::Printer marshaller_header_printer(marshaller_header_stream.get(), '$');
+        marshaller_header_printer.Print({{"gc", kGeneratedComment}},
                              "$gc$\n"
                              "#pragma once\n"
                              "#include \"CoreMinimal.h\"\n");
 
         for (int i = 0; i < file->message_type_count(); i++) {
             if (!file->message_type(i)->options().map_entry()) {
-                header_printer.Print("#include \"F$n$.h\"\n", "n", std::string(file->message_type(i)->name()));
+                marshaller_header_printer.Print("#include \"F$n$.h\"\n", "n", std::string(file->message_type(i)->name()));
             }
         }
-        header_printer.Print("\n");
+        marshaller_header_printer.Print("\n");
 
         // Forward declare all proto messages in the header to avoid leaking full pb.h
         // We use full names with namespaces
@@ -466,38 +466,38 @@ public:
             size_t last_dot = msg->full_name().find_last_of('.');
             if (last_dot != std::string::npos) {
                 std::string ns = absl::StrReplaceAll(msg->full_name().substr(0, last_dot), {{".", "::"}});
-                header_printer.Print("namespace $ns$ { class $n$; }\n",
+                marshaller_header_printer.Print("namespace $ns$ { class $n$; }\n",
                                      "ns", ns,
                                      "n", msg->name());
             } else {
-                header_printer.Print("class $n$;\n", "n", msg->name());
+                marshaller_header_printer.Print("class $n$;\n", "n", msg->name());
             }
         }
 
-        header_printer.Print("\nclass $m$FUnrealGrpcMarshaler {\npublic:\n", "m", macro_with_space);
-        header_printer.Indent();
+        marshaller_header_printer.Print("\nclass $m$FUnrealGrpcMarshaler {\npublic:\n", "m", macro_with_space);
+        marshaller_header_printer.Indent();
 
         for (int i = 0; i < file->message_type_count(); i++) {
             const Descriptor *msg = file->message_type(i);
             if (msg->options().map_entry()) continue;
 
             std::string full_name = "::" + absl::StrReplaceAll(msg->full_name(), {{".", "::"}});
-            header_printer.Print("static F$n$ ToUnreal(const $fn$& In);\n",
+            marshaller_header_printer.Print("static F$n$ ToUnreal(const $fn$& In);\n",
                                  "fn", full_name,
                                  "n", msg->name());
-            header_printer.Print("static $fn$ ToGrpc(const F$n$& In);\n",
+            marshaller_header_printer.Print("static $fn$ ToGrpc(const F$n$& In);\n",
                                  "fn", full_name,
                                  "n", msg->name());
         }
 
-        header_printer.Outdent();
-        header_printer.Print("};\n");
+        marshaller_header_printer.Outdent();
+        marshaller_header_printer.Print("};\n");
 
-        // Converter Function Generation. This is one massive static class with functions to convert all proto cpp messages to ustructs
+        // Marshall Function Generation. This is one massive static class with functions to convert all proto cpp messages to ustructs
         // Generate a static function per message to convert from backing cpp type to USTRUCT type
-        const std::string converter_cpp = base_filename + "Converter.cpp";
-        const std::unique_ptr<io::ZeroCopyOutputStream> converter_cpp_stream(context->Open(converter_cpp));
-        io::Printer converter_cpp_printer(converter_cpp_stream.get(), '$');
+        const std::string marshaller_cpp = base_filename + "Marshaller.cpp";
+        const std::unique_ptr<io::ZeroCopyOutputStream> marshaller_cpp_stream(context->Open(marshaller_cpp));
+        io::Printer marshaller_cpp_printer(marshaller_cpp_stream.get(), '$');
         // Default includes and pragma
         std::string proto_header = std::string(file->name());
         size_t last_dot_file = proto_header.find_last_of('.');
@@ -506,23 +506,23 @@ public:
         }
         proto_header += ".pb.h";
 
-        converter_cpp_printer.Print({{"gc", kGeneratedComment},{"ch", converter_header}, {"ph", proto_header}},
+        marshaller_cpp_printer.Print({{"gc", kGeneratedComment},{"ch", marshaller_header}, {"ph", proto_header}},
                                     "$gc$\n"
                                     "#include \"$ch$\"\n"
                                     "#include \"$ph$\"\n");
 
         for (int i = 0; i < file->message_type_count(); i++) {
             if (!file->message_type(i)->options().map_entry()) {
-                converter_cpp_printer.Print("#include \"F$n$.h\"\n", "n", std::string(file->message_type(i)->name()));
+                marshaller_cpp_printer.Print("#include \"F$n$.h\"\n", "n", std::string(file->message_type(i)->name()));
             }
         }
-        converter_cpp_printer.Print("\n");
+        marshaller_cpp_printer.Print("\n");
 
         for (int i = 0; i < file->message_type_count(); i++) {
             //skip backing map entries.
             if (!file->message_type(i)->options().map_entry()) {
-                GenerateConversionFunction(file->message_type(i), converter_cpp_printer, proto_namespace);
-                GenerateToGrpcConversionFunction(file->message_type(i), converter_cpp_printer, proto_namespace);
+                GenerateConversionFunction(file->message_type(i), marshaller_cpp_printer, proto_namespace);
+                GenerateToGrpcConversionFunction(file->message_type(i), marshaller_cpp_printer, proto_namespace);
             }
         }
         return true;
