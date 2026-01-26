@@ -28,7 +28,7 @@ jobs:
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build and Install
-        run: cmake --build build --target install --config Release --parallel
+        run: cmake --build build --target install --config Release -j 2
 
       - name: Prune Metadata
         shell: pwsh
